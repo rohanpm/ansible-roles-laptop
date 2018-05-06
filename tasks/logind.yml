@@ -16,24 +16,15 @@
   - key: HandleLidSwitch
     value: "{{ laptop_lid_switch }}"
 
-- name: Check systemd-logind timestamp
-  command: >-
-    /bin/sh -c '
-    touch -d
-    "$(systemctl show systemd-logind --property ExecMainStartTimestamp | cut -d= -f2)"
-    /tmp/ts
-    '
-  changed_when: false
-
-- name: Check if systemd-logind config is stale
-  command: test /etc/systemd/logind.conf -nt /tmp/ts
-  register: stale_logind
-  changed_when: false
-  failed_when: stale_logind.rc not in [0, 1]
+- name: Check systemd-logind time
+  timediff:
+    src: /etc/systemd/logind.conf
+    dest: systemd:systemd-logind
+  register: logind_conf_vs_loaded
 
 - name: Restart systemd-logind
   systemd:
     name: systemd-logind
     state: restarted
-  when: stale_logind.rc == 0
+  when: logind_conf_vs_loaded.newer
   become: yes

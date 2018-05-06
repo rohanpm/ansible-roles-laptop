@@ -21,13 +21,13 @@
   when: check_swap.stdout_lines|length == 1
 
 - name: Check if grub config is up-to-date
-  command: test /etc/default/grub -nt /boot/grub2/grub.cfg
-  register: grub_stale
-  failed_when: grub_stale.rc not in [0, 1]
-  changed_when: false
+  timediff:
+    src: /etc/default/grub
+    dest: /boot/grub2/grub.cfg
   become: yes
+  register: grub_diff
 
 - name: Update grub config
   command: /usr/sbin/grub2-mkconfig -o /boot/grub2/grub.cfg
-  when: grub_stale.rc == 0
+  when: grub_diff.newer
   become: yes
