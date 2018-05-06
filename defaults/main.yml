@@ -1,0 +1,5 @@
+---
+laptop_power_key: hibernate
+laptop_suspend_key: suspend
+laptop_hibernate_key: hibernate
+laptop_lid_switch: hibernate

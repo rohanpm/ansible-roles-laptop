@@ -1,0 +1,33 @@
+---
+- name: Check swap device
+  command: sed -r -n -e 's|^(/dev[^ ]+)\s+swap.*|\1|p' /etc/fstab
+  register: check_swap
+  args:
+    warn: false
+  changed_when: false
+
+- name: Ensure resume enabled for swap
+  lineinfile:
+    backup: yes
+    backrefs: yes
+    state: present
+    path: /etc/default/grub
+    validate: /bin/sh -c 'source %s'
+    regexp: >-
+      ^GRUB_CMDLINE_LINUX="(?!resume={{ check_swap.stdout }})(.+)"$
+    line: >-
+      GRUB_CMDLINE_LINUX="resume={{ check_swap.stdout }} \1"
+  become: yes
+  when: check_swap.stdout_lines|length == 1
+
+- name: Check if grub config is up-to-date
+  command: test /etc/default/grub -nt /boot/grub2/grub.cfg
+  register: grub_stale
+  failed_when: grub_stale.rc not in [0, 1]
+  changed_when: false
+  become: yes
+
+- name: Update grub config
+  command: /usr/sbin/grub2-mkconfig -o /boot/grub2/grub.cfg
+  when: grub_stale.rc == 0
+  become: yes

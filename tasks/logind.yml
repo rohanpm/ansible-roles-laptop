@@ -1,0 +1,39 @@
+---
+- name: Set logind key
+  lineinfile:
+    path: /etc/systemd/logind.conf
+    line: "{{ item.key }}={{ item.value }}"
+    regexp: >-
+      ^#?{{ item.key }}=
+  become: yes
+  with_items:
+  - key: HandlePowerKey
+    value: "{{ laptop_power_key }}"
+  - key: HandleSuspendKey
+    value: "{{ laptop_suspend_key }}"
+  - key: HandleHibernateKey
+    value: "{{ laptop_hibernate_key }}"
+  - key: HandleLidSwitch
+    value: "{{ laptop_lid_switch }}"
+
+- name: Check systemd-logind timestamp
+  command: >-
+    /bin/sh -c '
+    touch -d
+    "$(systemctl show systemd-logind --property ExecMainStartTimestamp | cut -d= -f2)"
+    /tmp/ts
+    '
+  changed_when: false
+
+- name: Check if systemd-logind config is stale
+  command: test /etc/systemd/logind.conf -nt /tmp/ts
+  register: stale_logind
+  changed_when: false
+  failed_when: stale_logind.rc not in [0, 1]
+
+- name: Restart systemd-logind
+  systemd:
+    name: systemd-logind
+    state: restarted
+  when: stale_logind.rc == 0
+  become: yes

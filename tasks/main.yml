@@ -1,0 +1,3 @@
+---
+- include: logind.yml
+- include: grub-resume.yml
